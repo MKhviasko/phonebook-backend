@@ -6,6 +6,7 @@ const app = express()
 
 app.use(express.json())
 app.use(cors())
+app.use(express.static('dist'))
 
 morgan.token('body', (req, res) => JSON.stringify(req.body));
 const customLogFormat = ':method :url :status :response-time ms - :body';
