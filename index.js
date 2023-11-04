@@ -20,17 +20,19 @@ app.get('/api/persons', (request, response) => {
     })
 })
 
-app.get('/info', (request, response) => {
+app.get('/info', (request, response, next) => {
     const currentDate = new Date().toLocaleString()
     const currentTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    response.send(
-        `<div>
-        <p>Phonebook haas info about people</p>
-        </div>
-        
-        <div>
-        <p>${currentDate} (${currentTimeZone})</p>
-       </div>`)
+    Person.countDocuments({}).then(result => {
+        response.send(
+            `<div>
+            <p>Phonebook haas info about ${result} people</p>
+            </div>
+            
+            <div>
+            <p>${currentDate} (${currentTimeZone})</p>
+           </div>`)
+    }).catch(error => next(error))
 })
 
 app.get('/api/persons/:id', (request, response, next) => {
@@ -58,7 +60,8 @@ app.put('/api/persons/:id', (request, response, next) => {
         name: body.name
     }
 
-    Person.findByIdAndUpdate(request.params.id, person, { new: true })
+    Person.findByIdAndUpdate(request.params.id, person,
+        { new: true, runValidators: true, context: 'query' })
         .then(updatedPerson => {
             response.json(updatedPerson)
         })
@@ -67,16 +70,6 @@ app.put('/api/persons/:id', (request, response, next) => {
 
 app.post('/api/persons', (request, response, next) => {
     const body = request.body
-
-    if (!body.name) {
-        return response.status(400).json({
-            error: 'name is missing'
-        })
-    } else if (!body.number) {
-        return response.status(400).json({
-            error: 'number is missing'
-        })
-    }
 
     Person.findOne({ name: body.name }).then(existingPerson => {
         if (existingPerson) {
@@ -106,6 +99,8 @@ const errorHandler = (error, request, response, next) => {
     console.error(error.message)
     if (error.name === 'CastError') {
         return response.status(400).send({ error: 'malformatted id' })
+    } else if (error.name === 'ValidationError') {
+        return response.status(400).json({ error: error.message })
     }
     next(error)
 }
